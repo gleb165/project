@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import EmailStr
+from pydantic import EmailStr, BaseModel
 from redis_om import get_redis_connection, HashModel
 from fastapi.responses import JSONResponse
 
@@ -21,13 +21,21 @@ class Product(HashModel):
         database = redis
 
 
+class CreateProduct(BaseModel):
+    name: str
+    price: int
+    quantity: int
+
+
 @app.get("/products")
 def root():
     return Product.all_pks()
 
 
-@app.post("/products", response_model=None)
-def create(product: Product) -> Product:
-    result = product.save()
-    return result
+@app.post("/products")
+def create(product: CreateProduct):
+    product_data = product.dict()
+    return Product(**product_data).save()
+
+
 
