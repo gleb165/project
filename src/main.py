@@ -1,14 +1,33 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import EmailStr
+from redis_om import get_redis_connection, HashModel
+from fastapi.responses import JSONResponse
+
 
 app = FastAPI()
 
+app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000'],
+                   allow_methods=['*'], allow_headers=['*'])
+redis = get_redis_connection(host='redis-14457.c55.eu-central-1-1.ec2.cloud.redislabs.com', port=14457, password='qyg5Z40sC0W77p0eCCk4iGvaCghTIosn', decode_responses=True)
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+
+class Product(HashModel):
+    name: str
+    price: int
+    quantity: int
+
+    class Meta:
+        database = redis
 
 
-@app.get("/hello/{name}")
-async def say_hello(name: EmailStr):
-    return {"message": f"Hello {EmailStr}"}
+@app.get("/products")
+def root():
+    return Product.all_pks()
+
+
+@app.post("/products", response_model=None)
+def create(product: Product) -> Product:
+    result = product.save()
+    return result
+
